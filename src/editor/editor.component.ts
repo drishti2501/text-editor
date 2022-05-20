@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import * as Y from "yjs";
-import { WebrtcProvider } from "y-webrtc";
+import { WebsocketProvider } from 'y-websocket'
 import { QuillBinding } from "y-quill";
 import Quill from "quill";
 import QuillCursors from "quill-cursors";
@@ -66,14 +66,30 @@ export class EditorComponent implements OnInit {
 // A Yjs document holds the shared data
 const ydoc = new Y.Doc();
 console.log(id.toString());
-const provider = new WebrtcProvider(id.toString(), ydoc,{ signaling: ['ws://localhost:4444'],password: this.randomId.toString(),awareness:  new awarenessProtocol.Awareness(ydoc),maxConns: Number.POSITIVE_INFINITY,filterBcConns: false,peerOpts: {}});
+const wsProvider = new WebsocketProvider('ws://10.0.0.114:1234', id.toString(), ydoc,{
+  // Set this to `false` if you want to connect manually using wsProvider.connect()
+  connect: true,
+  // Specify a query-string that will be url-encoded and attached to the `serverUrl`
+  // I.e. params = { auth: "bearer" } will be transformed to "?auth=bearer"
+  params: {}, // Object<string,string>
+  // You may polyill the Websocket object (https://developer.mozilla.org/en-US/docs/Web/API/WebSocket).
+  // E.g. In nodejs, you could specify WebsocketPolyfill = require('ws')
+  WebSocketPolyfill: WebSocket,
+  // Specify an existing Awareness instance - see https://github.com/yjs/y-protocols
+  awareness: new awarenessProtocol.Awareness(ydoc),
+  // Specify the maximum amount to wait between reconnects (we use exponential backoff).
+  maxBackoffTime: 2500
+}
+);
+wsProvider.connect();
 
 // Define a shared text type on the document
-console.log(ydoc);
+console.log(wsProvider.bcconnected);
+
 const ytext = ydoc.getText("quill");
 
 // "Bind" the quill editor to a Yjs text type.
-const binding = new QuillBinding(ytext, quill, provider.awareness);
+const binding = new QuillBinding(ytext, quill, wsProvider.awareness);
 
 // Remove the selection when the iframe is blurred
 window.addEventListener("blur", () => {
